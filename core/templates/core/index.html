@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de Clientes</title>
+</head>
+<body>
+    <h1>Clientes</h1>
+    
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="clientes-table">
+            <!-- Clientes serão listados aqui -->
+        </tbody>
+    </table>
+    
+    <h2>Adicionar Cliente</h2>
+    <form id="cliente-form">
+        {% csrf_token %}
+        <input type="hidden" id="cliente-id">
+        <input type="text" id="nome" placeholder="Nome" required>
+        <input type="text" id="telefone" placeholder="Telefone" required>
+        <button type="submit">Adicionar</button>
+    </form>
+
+    <script>
+        const apiUrl = "http://127.0.0.1:8000/clientes/";     
+
+        // function getCookie(name) {
+        //     let cookieValue = null;
+        //     if (document.cookie && document.cookie !== "") {
+        //         const cookies = document.cookie.split(";");
+        //         for (let i = 0; i < cookies.length; i++) {
+        //             const cookie = cookies[i].trim();
+        //             if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        //                 cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        //                 break;
+        //             }
+        //         }
+        //     }
+        //     return cookieValue;
+        // }
+
+        // const csrftoken = getCookie('csrftoken');
+
+        function carregarClientes() {
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(clientes => {
+                    const clienteTable = document.getElementById('clientes-table');
+                    clienteTable.innerHTML = ""; // Limpa a tabela
+
+                    // Itera sobre os clientes e adiciona cada um à tabela
+                    clientes.forEach(cliente => {
+                        const row = document.createElement("tr");
+                        row.innerHTML = `
+                            <td>${cliente.nome}</td>
+                            <td>${cliente.telefone}</td>
+                            <td>
+                                <button onclick="editarCliente(${cliente.id})">Editar</button>
+                                <button onclick="excluirCliente(${cliente.id})">Excluir</button>
+                            </td>
+                        `;
+                        clienteTable.appendChild(row);
+                    });
+                })
+                .catch(error => console.error("Erro ao carregar clientes:", error));
+        }
+
+        document.getElementById("cliente-form").addEventListener("submit", function(event) {
+            event.preventDefault();
+
+            const id = document.getElementById("cliente-id").value;
+            const nome = document.getElementById("nome").value;
+            const telefone = document.getElementById("telefone").value;
+
+            const url = id ? `${apiUrl}${id}/` : apiUrl;
+            const method = id ? "PUT" : "POST";
+
+            fetch(url, {
+                method: method,
+                headers: {
+                    "Content-Type": "application/json",
+                    'X-CSRFToken': `{{ csrf_token }}`
+                },
+                body: JSON.stringify({ "nome": nome, "telefone": telefone })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro HTTP: ' + response.status);
+                }
+                return response.json();
+            })
+            .then(() => {
+                carregarClientes();
+                document.getElementById("cliente-form").reset();
+                document.getElementById("cliente-id").value = "";
+            })
+            .catch(error => console.error('Erro ao salvar o cliente:', error));
+        });
+
+        function editarCliente(id) {
+            fetch(`${apiUrl}${id}/`)
+                .then(response => response.json())
+                .then(cliente => {
+                    document.getElementById("cliente-id").value = cliente.id;
+                    document.getElementById("nome").value = cliente.nome;
+                    document.getElementById("telefone").value = cliente.telefone;
+                })
+                .catch(error => console.error("Erro ao carregar cliente para edição:", error));
+        }
+
+        function excluirCliente(id) {
+            fetch(`${apiUrl}${id}/`, {
+                method: "DELETE",
+                headers: {
+                    'X-CSRFToken': `{{ csrf_token }}`
+                }
+            })
+            .then(() => carregarClientes())
+            .catch(error => console.error("Erro ao excluir cliente:", error));
+        }
+
+        carregarClientes();
+    </script>
+</body>
+</html>
