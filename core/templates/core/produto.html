@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+</head>
+<body>
+    <form id="form-produto">
+        {% csrf_token %}
+        <input type="hidden" id="produto-id">
+        <input type="text" id="nome" name="nome">
+        <input type="text" id="preco" name="preco">
+
+        <button type="submit">Salva</button>
+    </form>
+
+    <table >
+        <thead>
+            <tr>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Ações</th>
+            </tr>
+        </thead>
+        <tbody id="tabelaProduto">
+
+        </tbody>
+    </table>
+
+    <script>
+
+        //Primeiro passo eu tenho que declarar uma variavel global para api
+        const apiUrl = "http://127.0.0.1:8000/produtos/";
+        
+        
+        //No meu exemplo eu tenho um tabela então eu tenho que buscar os produtos
+        //E percorre-los criado as linhas das minhaas tabelas
+        function getProdutos(){
+            //Aqui estou usando o metodo get passando como paramentro a apiUrl
+          axios.get(apiUrl)
+            .then(function (response){
+                //Os dados do bando estam em response.data
+                const produtos = response.data;
+                //Aqui eu pego a tabela por id 
+                const produtoTable = document.getElementById('tabelaProduto')
+                //Nesse ponto eu limpo a tabela que peguei
+                produtoTable.innerHTML = ""
+                //percorro a lista de produtos e em cada interação eu crio uma linha
+                produtos.forEach(produto => {
+                    //Aqui eu criou uma tr html para
+                    const row = document.createElement('tr')
+                    // Aqui eu adiciono valores as linhas 
+                    row.innerHTML = `
+                    <td>${produto.nome}</td>
+                    <td>${produto.preco}</td>
+                    <td>
+                        <button onclick="editarProduto(${produto.id})">Edite</button>
+                        <button onclick="excluirProduto(${produto.id})">Deletar</button>
+                    </td>
+                    `;
+
+                    //Aqui adiciona a linha criada a tabela
+                    produtoTable.appendChild(row)             
+                
+                });              
+            })                
+        }
+
+        /// Pegar o formulario
+        document.getElementById('form-produto').addEventListener('submit', function(event){
+            event.preventDefault()
+            const id= document.getElementById('produto-id').value;
+            const nome = document.getElementById('nome').value;
+            const preco = document.getElementById('preco').value;
+
+            const url = id ? `${apiUrl}${id}/`: apiUrl;
+            const method = id? "PUT" : "POST"
+
+            axios({
+                method: method,
+                url: url,
+                header: {
+                    "X_CSRFToken": `{{ csrf_token }}`
+                },
+                data: {
+                    nome: nome,
+                    preco: preco
+                }
+            })
+            .then(() => {
+                getProdutos()
+                document.getElementById('form-produto').reset()
+                document.getElementById('produto-id').value = "";
+            })
+            .catch(error => console.error('Error ao salvar produto: ', error))
+        })
+
+        function editarProduto(id){
+            axios.get(`${apiUrl}${id}/`)
+            .then(response => {
+                const produto = response.data;
+                document.getElementById('produto-id').value = produto.id;
+                document.getElementById('nome').value = produto.nome;
+                document.getElementById('preco').value = produto.preco
+
+            })
+            .catch(error => console.error('Erro ao carregar para edicao', error))
+        }
+
+        function excluirProduto(id){
+            axios.delete(`${apiUrl}${id}/`, {
+                headers: {
+                    "X-CSRFToken": `{{ csrf_token }}`
+                }
+            })
+            .then(() =>getProdutos())
+            .catch(error => console.error('Erro ao excluir o produto'), error)
+        }
+
+        getProdutos()
+    </script>
+
+</body>
+</html>
